@@ -1,3 +1,13 @@
+/*
+ * LED.c
+ *
+ *  Created on: 13.05.2013
+ *      Author: skuser
+ *
+ *  ChangeLog
+ *    2019-09-22    willok    Add 8 LED for indicate 8 slot
+ *
+ */
 #include "LED.h"
 #include "Settings.h"
 #include "Map.h"
@@ -24,7 +34,97 @@ static const MapEntryType PROGMEM LEDFunctionMap[] = {
     { .Id = LED_LOG_MEM_FULL,	.Text = "LOGMEM_FULL"		},
 };
 
-INLINE void Tick(uint8_t Mask, LEDActionEnum *Action) {
+void LEDHook(LEDHookEnum Func, LEDActionEnum Action) {
+    extern LEDActionEnum LEDGreenAction;
+    extern LEDActionEnum LEDRedAction;
+
+    if (GlobalSettings.ActiveSettingPtr->LEDGreenFunction == Func) {
+        LEDGreenAction = Action;
+    }
+
+    if (GlobalSettings.ActiveSettingPtr->LEDRedFunction == Func) {
+        LEDRedAction = Action;
+    }
+}
+
+
+
+//    0 = Default mode，1 = 8 LED mode
+uint8_t LedMode = 1;
+
+uint8_t LedConfig[] = {
+    1,    0,    2,    2,    2,        //    1
+    0,    1,    2,    2,    2,
+    0,    0,    1,    2,    2,
+    0,    0,    0,    2,    2,
+    0,    0,    2,    1,    2,
+    0,    0,    2,    0,    2,
+    0,    0,    2,    2,    1,
+    0,    0,    2,    2,    0,
+    0,    0,    0,    1,    2,        //    9
+};
+
+//    LED init
+void LEDInit(void) {
+    LED_PORT.DIRSET = LED_MASK;
+
+    //    For Extended led, high resistance
+    PORTA.DIRCLR = PIN0_bm;
+    PORTE.DIRCLR = PIN1_bm;
+    PORTE.DIRCLR = PIN0_bm;
+}
+
+//    根据状态切换指示灯
+void Led8Map(uint8_t LedNo) {
+    //    超出范围
+    if (LedNo > SETTINGS_COUNT) {
+        return;
+    }
+
+    if (LedConfig[LedNo * 5])
+        LED_PORT.OUTSET = PIN4_bm;
+    else
+        LED_PORT.OUTCLR = PIN4_bm;
+
+    if (LedConfig[LedNo * 5 + 1])
+        LED_PORT.OUTSET = PIN3_bm;
+    else
+        LED_PORT.OUTCLR = PIN3_bm;
+
+    if (0 == LedConfig[LedNo * 5 + 2]) {
+        PORTA.OUTCLR = PIN0_bm;
+        PORTA.DIRSET = PIN0_bm;
+    } else if (1 == LedConfig[LedNo * 5 + 2]) {
+        PORTA.OUTSET = PIN0_bm;
+        PORTA.DIRSET = PIN0_bm;
+    } else {
+        PORTA.DIRCLR = PIN0_bm;
+    }
+
+    if (0 == LedConfig[LedNo * 5 + 3]) {
+        PORTE.OUTCLR = PIN1_bm;
+        PORTE.DIRSET = PIN1_bm;
+    } else if (1 == LedConfig[LedNo * 5 + 3]) {
+        PORTE.OUTSET = PIN1_bm;
+        PORTE.DIRSET = PIN1_bm;
+    } else {
+        PORTE.DIRCLR = PIN1_bm;
+    }
+
+    if (0 == LedConfig[LedNo * 5 + 4]) {
+        PORTE.OUTCLR = PIN0_bm;
+        PORTE.DIRSET = PIN0_bm;
+    } else if (1 == LedConfig[LedNo * 5 + 4]) {
+        PORTE.OUTSET = PIN0_bm;
+        PORTE.DIRSET = PIN0_bm;
+    } else {
+        PORTE.DIRCLR = PIN0_bm;
+    }
+}
+
+//    循环执行，更新指示灯状态
+//INLINE void Tick(uint8_t Mask, LEDActionEnum* Action)
+void Tick(uint8_t Mask, LEDActionEnum *Action) {
     static uint8_t LEDRedBlinkPrescaler = 0;
     static uint8_t LEDGreenBlinkPrescaler = 0;
     uint8_t *BlinkPrescaler = (Action == &LEDGreenAction) ? &LEDGreenBlinkPrescaler : &LEDRedBlinkPrescaler;
@@ -58,7 +158,7 @@ INLINE void Tick(uint8_t Mask, LEDActionEnum *Action) {
             }
             break;
 
-        case LED_BLINK_1X ... LED_BLINK_8X:
+        case LED_BLINK_1X ... LED_BLINK_9X:
             if (++(*BlinkPrescaler) == BLINK_PRESCALER) {
                 *BlinkPrescaler = 0;
 
@@ -88,14 +188,21 @@ INLINE void Tick(uint8_t Mask, LEDActionEnum *Action) {
     }
 }
 
-void LEDInit(void) {
-    LED_PORT.DIRSET = LED_MASK;
-}
-
-
+//    指示灯循环
 void LEDTick(void) {
-    Tick(LED_RED, &LEDRedAction);
-    Tick(LED_GREEN, &LEDGreenAction);
+    //    默认模式
+    if (0 == LedMode) {
+        Tick(LED_RED, &LEDRedAction);
+        Tick(LED_GREEN, &LEDGreenAction);
+    } else {
+        static uint8_t LastLed = 0xFF;
+
+        //    配置更改，更新显示
+        if (LastLed != GlobalSettings.ActiveSettingIdx) {
+            LastLed = GlobalSettings.ActiveSettingIdx;
+            Led8Map(LastLed);
+        }
+    }
 }
 
 void LEDGetFuncList(char *List, uint16_t BufferSize) {

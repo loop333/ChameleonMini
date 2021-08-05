@@ -10,6 +10,8 @@
 
 #include "Settings.h"
 
+void LEDHook(LEDHookEnum Func, LEDActionEnum Action);
+/*
 INLINE void LEDHook(LEDHookEnum Func, LEDActionEnum Action) {
     extern LEDActionEnum LEDGreenAction;
     extern LEDActionEnum LEDRedAction;
@@ -22,5 +24,5 @@ INLINE void LEDHook(LEDHookEnum Func, LEDActionEnum Action) {
         LEDRedAction = Action;
     }
 }
-
+*/
 #endif /* LEDHOOK_H_ */
