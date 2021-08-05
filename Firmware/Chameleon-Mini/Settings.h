@@ -64,7 +64,7 @@ INLINE void SettingUpdate(const void *addr, uint16_t size) {
 void SettingsLoad(void);
 void SettingsSave(void);
 
-void SettingsCycle(void);
+void SettingsCycle(uint8_t bAdd);
 bool SettingsSetActiveById(uint8_t Setting);
 uint8_t SettingsGetActiveById(void);
 void SettingsGetActiveByName(char *SettingOut, uint16_t BufferSize);

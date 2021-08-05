@@ -42,15 +42,19 @@ void SettingsSave(void) {
 #endif
 }
 
-void SettingsCycle(void) {
-    uint8_t i = SETTINGS_COUNT;
+void SettingsCycle(uint8_t bAdd) {
     uint8_t SettingIdx = GlobalSettings.ActiveSettingIdx;
 
-    while (i-- > 0) {
-        /* Try to set one of the SETTINGS_COUNT following settings.
-         * But only set if it is not CONFIG_NONE. */
-        SettingIdx = (SettingIdx + 1) % SETTINGS_COUNT;
-
+    for (uint8_t i = SETTINGS_COUNT; i > 0; i--) {
+            if (SettingIdx >= SETTINGS_COUNT) {
+                SettingIdx = 0;
+                i++;
+            } else {
+                if (bAdd)
+                    SettingIdx = (SettingIdx + 1) % SETTINGS_COUNT;
+                else
+                    SettingIdx = (SettingIdx + SETTINGS_COUNT - 1) % SETTINGS_COUNT;
+            }
         if (GlobalSettings.Settings[SettingIdx].Configuration != CONFIG_NONE) {
             SettingsSetActiveById(INDEX_TO_SETTING(SettingIdx));
             break;
@@ -113,4 +117,3 @@ bool SettingsSetActiveByName(const char *Setting) {
         return false;
     }
 }
-
