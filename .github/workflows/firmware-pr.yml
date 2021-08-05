@@ -4,7 +4,8 @@ on:
   pull_request:
     paths:
       - "Firmware/**"
-
+  workflow_dispatch:
+    
 jobs:
   build:
 
