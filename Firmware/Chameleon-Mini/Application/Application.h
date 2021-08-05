@@ -19,9 +19,7 @@
 #include "Vicinity.h"
 #include "Sl2s2002.h"
 #include "TITagitstandard.h"
-#include "TITagitplus.h"
 #include "Sniff14443A.h"
-#include "NTAG215.h"
 #include "EM4233.h"
 
 /* Function wrappers */
@@ -53,6 +51,22 @@ INLINE void ApplicationGetUid(ConfigurationUidType Uid) {
 INLINE void ApplicationSetUid(ConfigurationUidType Uid) {
     ActiveConfiguration.ApplicationSetUidFunc(Uid);
     LogEntry(LOG_INFO_UID_SET, Uid, ActiveConfiguration.UidSize);
+}
+
+INLINE void ApplicationGetSak(uint8_t * Sak) {
+	ActiveConfiguration.ApplicationGetSakFunc(Sak);
+}
+
+INLINE void ApplicationSetSak(uint8_t Sak) {
+	ActiveConfiguration.ApplicationSetSakFunc(Sak);
+}
+
+INLINE void ApplicationGetAtqa(uint16_t * Atqa) {
+	ActiveConfiguration.ApplicationGetAtqaFunc(Atqa);
+}
+
+INLINE void ApplicationSetAtqa(uint16_t Atqa) {
+	ActiveConfiguration.ApplicationSetAtqaFunc(Atqa);
 }
 
 #endif /* APPLICATION_H_ */

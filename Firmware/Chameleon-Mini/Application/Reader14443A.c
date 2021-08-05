@@ -1,13 +1,10 @@
-#if defined(CONFIG_ISO14443A_READER_SUPPORT) || \
-     defined(CONFIG_ISO14443A_SNIFF_SUPPORT)
-
 #include "Reader14443A.h"
-#include "LEDHook.h"
 #include "Application.h"
 #include "ISO14443-3A.h"
 #include "../Codec/Reader14443-2A.h"
 #include "Crypto1.h"
 #include "../System.h"
+#include "../uartcmd.h"
 
 #include "../Terminal/Terminal.h"
 
@@ -145,8 +142,8 @@ uint16_t addParityBits(uint8_t *Buffer, uint16_t BitCount) {
 
 uint16_t removeParityBits(uint8_t *Buffer, uint16_t BitCount) {
     // Short frame, no parity bit is added
-    if (BitCount == 7)
-        return 7;
+    if (BitCount <= 7)
+        return BitCount;
 
     uint16_t i;
     for (i = 0; i < (BitCount / 9); i++) {
@@ -154,7 +151,7 @@ uint16_t removeParityBits(uint8_t *Buffer, uint16_t BitCount) {
         if (i % 8)
             Buffer[i] |= (Buffer[i + i / 8 + 1] << (8 - (i % 8)));
     }
-    return BitCount / 9 * 8;
+    return (BitCount / 9) * 8;
 }
 
 bool checkParityBits(uint8_t *Buffer, uint16_t BitCount) {
@@ -233,7 +230,7 @@ static uint16_t Reader14443A_Select(uint8_t *Buffer, uint16_t BitCount) {
     switch (ReaderState) {
         case STATE_IDLE:
         case STATE_HALT:
-            Reader_FWT = 4;
+            Reader_FWT = ISO14443A_RX_PENDING_TIMEOUT;
             /* Send a REQA */
             Buffer[0] = ISO14443A_CMD_WUPA; // whenever REQA works, WUPA also works, so we choose WUPA always
             ReaderState = STATE_READY;
@@ -814,26 +811,15 @@ uint16_t Reader14443AAppProcess(uint8_t *Buffer, uint16_t BitCount) {
                 return BitCount;
             }
         }
-        /****************************************
-         * This function do simple cloning UID. *
-         ****************************************/
+
         case Reader14443_Identify_Clone: {
             if (Identify(Buffer, &BitCount)) {
                 if (CardCandidatesIdx == 1) {
                     int cfgid = -1;
                     switch (CardCandidates[0]) {
                         case CardType_NXP_MIFARE_Ultralight: {
-#ifdef CONFIG_MF_ULTRALIGHT_SUPPORT
                             cfgid = CONFIG_MF_ULTRALIGHT;
-#endif
                             // TODO: enter MFU clone mdoe
-                            break;
-                        }
-                        case CardType_NXP_MIFARE_DESFire_EV1: {
-#ifdef CONFIG_MF_ULTRALIGHT_SUPPORT
-                            cfgid = CONFIG_MF_ULTRALIGHT;
-#endif
-                            // Only set UL for DESFire_EV1 and read UID for some small tests - simple UID cloning
                             break;
                         }
                         case CardType_NXP_MIFARE_Classic_1k:
@@ -842,8 +828,8 @@ uint16_t Reader14443AAppProcess(uint8_t *Buffer, uint16_t BitCount) {
 #ifdef CONFIG_MF_CLASSIC_1K_SUPPORT
                                 cfgid = CONFIG_MF_CLASSIC_1K;
 #endif
-                            } else if (CardCharacteristics.UIDSize == UIDSize_Double) {
 #ifdef CONFIG_MF_CLASSIC_1K_7B_SUPPORT
+                            } else if (CardCharacteristics.UIDSize == UIDSize_Double) {
                                 cfgid = CONFIG_MF_CLASSIC_1K_7B;
 #endif
                             }
@@ -856,8 +842,8 @@ uint16_t Reader14443AAppProcess(uint8_t *Buffer, uint16_t BitCount) {
 #ifdef CONFIG_MF_CLASSIC_4K_SUPPORT
                                 cfgid = CONFIG_MF_CLASSIC_4K;
 #endif
-                            } else if (CardCharacteristics.UIDSize == UIDSize_Double) {
 #ifdef CONFIG_MF_CLASSIC_4K_7B_SUPPORT
+                            } else if (CardCharacteristics.UIDSize == UIDSize_Double) {
                                 cfgid = CONFIG_MF_CLASSIC_4K_7B;
 #endif
                             }
@@ -869,8 +855,6 @@ uint16_t Reader14443AAppProcess(uint8_t *Buffer, uint16_t BitCount) {
 
                     if (cfgid > -1) {
                         CommandLinePendingTaskFinished(COMMAND_INFO_OK_WITH_TEXT_ID, "Cloned OK!");
-                        /* Notify LED. blink when clone is done - ToDo: maybe use other LEDHook */
-                        LEDHook(LED_SETTING_CHANGE, LED_BLINK_2X);
                         ConfigurationSetById(cfgid);
                         ApplicationReset();
                         ApplicationSetUid(CardCharacteristics.UID);
@@ -910,5 +894,3 @@ uint16_t ISO14443_CRCA(uint8_t *Buffer, uint8_t ByteCount) {
     }
     return crc;
 }
-
-#endif

@@ -66,6 +66,14 @@ CommandStatusIdType CommandSetConfig(char *OutMessage, const char *InParam);
 CommandStatusIdType CommandGetUid(char *OutParam);
 CommandStatusIdType CommandSetUid(char *OutMessage, const char *InParam);
 
+#define COMMAND_ATQA                "ATQA"
+CommandStatusIdType CommandGetAtqa(char* OutParam);
+CommandStatusIdType CommandSetAtqa(char* OutMessage, const char* InParam);
+
+#define COMMAND_SAK                 "SAK"
+CommandStatusIdType CommandGetSak(char* OutParam);
+CommandStatusIdType CommandSetSak(char* OutMessage, const char* InParam);
+
 #define COMMAND_READONLY    "READONLY"
 CommandStatusIdType CommandGetReadOnly(char *OutParam);
 CommandStatusIdType CommandSetReadOnly(char *OutMessage, const char *InParam);
@@ -112,10 +120,6 @@ CommandStatusIdType CommandSetLedGreen(char *OutMessage, const char *InParam);
 #define COMMAND_LEDRED     	"LEDRED"
 CommandStatusIdType CommandGetLedRed(char *OutParam);
 CommandStatusIdType CommandSetLedRed(char *OutMessage, const char *InParam);
-
-#define COMMAND_PIN         "PIN"
-CommandStatusIdType CommandGetPin(char *OutParam);
-CommandStatusIdType CommandSetPin(char *OutMessage, const char *InParam);
 
 #define COMMAND_LOGMODE     "LOGMODE"
 CommandStatusIdType CommandGetLogMode(char *OutParam);
@@ -194,13 +198,25 @@ CommandStatusIdType CommandGetField(char *OutMessage);
 #define COMMAND_CLONE  "CLONE"
 CommandStatusIdType CommandExecClone(char *OutMessage);
 
-#ifdef ENABLE_RUNTESTS_TERMINAL_COMMAND
-    #include "../Tests/ChameleonTerminal.h"
-#endif
+#define COMMAND_SETUIDMODE   "UIDMODE"
+CommandStatusIdType CommandGetUidMode(char *OutMessage);
+CommandStatusIdType CommandSetUidMode(char *OutMessage, const char *InParam);
 
-#if defined(CONFIG_MF_DESFIRE_SUPPORT) && !defined(DISABLE_DESFIRE_TERMINAL_COMMANDS)
-     #include "../Application/DESFire/DESFireChameleonTerminal.h"
-#endif
+#define COMMAND_SETSAKMODE   "SAKMODE"
+CommandStatusIdType CommandGetSakMode(char *OutMessage);
+CommandStatusIdType CommandSetSakMode(char *OutMessage, const char *InParam);
+
+#define COMMAND_DETECTION   "DETECTION"
+CommandStatusIdType CommandGetDetection(char *OutParam);
+CommandStatusIdType CommandSetDetection(char *OutMessage, const char *InParam);
+
+#define COMMAND_BAUDRATE    "BAUDRATE"
+CommandStatusIdType CommandGetBaudrate(char *OutParam);
+CommandStatusIdType CommandSetBaudrate(char *OutMessage, const char *InParam);
+
+#define COMMAND_SETLEDMODE    "LEDMODE"
+CommandStatusIdType CommandGetLedMode(char *OutMessage);
+CommandStatusIdType CommandSetLedMode(char *OutMessage, const char *InParam);
 
 #define COMMAND_LIST_END    ""
 /* Defines the end of command list. This is no actual command */

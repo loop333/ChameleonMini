@@ -1,3 +1,14 @@
+/*
+ * Button.c
+ *
+ *  Created on: 20.03.2013
+ *      Author: skuser
+ *
+ *  ChangeLog
+ *    2019-09-22    willok    Reverse switch function and log clearing function are added.
+ *
+ */
+
 #include "Button.h"
 #include "Random.h"
 #include "Common.h"
@@ -25,10 +36,12 @@ static const MapEntryType PROGMEM ButtonActionMap[] = {
     { .Id = BUTTON_ACTION_UID_LEFT_DECREMENT,	.Text = "UID_LEFT_DECREMENT" },
     { .Id = BUTTON_ACTION_UID_RIGHT_DECREMENT,	.Text = "UID_RIGHT_DECREMENT" },
     { .Id = BUTTON_ACTION_CYCLE_SETTINGS,		.Text = "CYCLE_SETTINGS" },
+    { .Id = BUTTON_ACTION_CYCLE_SETTINGS_DEC,   .Text = "CYCLE_SETTINGS_DEC" },
     { .Id = BUTTON_ACTION_STORE_MEM,			.Text = "STORE_MEM" },
     { .Id = BUTTON_ACTION_RECALL_MEM,			.Text = "RECALL_MEM" },
     { .Id = BUTTON_ACTION_TOGGLE_FIELD,			.Text = "TOGGLE_FIELD" },
     { .Id = BUTTON_ACTION_STORE_LOG,			.Text = "STORE_LOG" },
+    { .Id = BUTTON_ACTION_CLEAR_LOG,            .Text = "CLEAR_LOG" },
     { .Id = BUTTON_ACTION_CLONE,			.Text = "CLONE" },
     { .Id = BUTTON_ACTION_CLONE_MFU,			.Text = "CLONE_MFU" },
 };
@@ -147,7 +160,12 @@ static void ExecuteButtonAction(ButtonActionEnum ButtonAction) {
         }
 
         case BUTTON_ACTION_CYCLE_SETTINGS: {
-            SettingsCycle();
+            SettingsCycle(true);
+            break;
+        }
+
+        case BUTTON_ACTION_CYCLE_SETTINGS_DEC: {
+            SettingsCycle(false);
             break;
         }
 
@@ -172,6 +190,12 @@ static void ExecuteButtonAction(ButtonActionEnum ButtonAction) {
 
         case BUTTON_ACTION_STORE_LOG: {
             LogSRAMToFRAM();
+            break;
+        }
+
+        case BUTTON_ACTION_CLEAR_LOG: {
+            LogMemClear();
+            DetectionLogClear();
             break;
         }
 

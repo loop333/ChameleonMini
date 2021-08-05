@@ -11,6 +11,7 @@
 
 uint16_t Reader_FWT = ISO14443A_RX_PENDING_TIMEOUT;
 
+//    This is the time interval from start to ready, data cannot be sent before
 #define READER_FIELD_MINIMUM_WAITING_TIME	70 // ms
 
 static uint16_t ReaderFieldStartTimestamp = 0;

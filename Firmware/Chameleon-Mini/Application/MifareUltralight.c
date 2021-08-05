@@ -5,8 +5,6 @@
  *      Author: skuser
  */
 
-#ifdef CONFIG_MF_ULTRALIGHT_SUPPORT
-
 #include "MifareUltralight.h"
 #include "ISO14443-3A.h"
 #include "../Codec/ISO14443-2A.h"
@@ -114,6 +112,8 @@ static uint8_t CompatWritePageAddress;
 static bool Authenticated;
 static uint8_t FirstAuthenticatedPage;
 static bool ReadAccessProtected;
+static uint16_t CardATQAValue;
+static uint8_t CardSAKValue;
 static uint8_t RNDBBuff [8];
 static uint8_t InitialVector[8] = {0};
 static uint8_t TripleDesKey [16];
@@ -155,6 +155,8 @@ static void AppInitCommon(void) {
     FromHalt = false;
     Authenticated = false;
     ArmedForCompatWrite = false;
+    CardATQAValue = ATQA_VALUE;
+    CardSAKValue = SAK_CL1_VALUE;
 }
 void MifareUltralightCAppInit(void) {
     Flavor = UL_C;
@@ -675,4 +677,22 @@ void MifareUltralightSetUid(ConfigurationUidType Uid) {
     MemoryWriteBlock(&BCC2, UID_BCC2_ADDRESS, ISO14443A_CL_BCC_SIZE);
 }
 
-#endif /* CONFIG_MF_ULTRALIGHT_SUPPORT */
+void MifareUltralightGetAtqa(uint16_t * Atqa)
+{
+    *Atqa = CardATQAValue;
+}
+
+void MifareUltralightSetAtqa(uint16_t Atqa)
+{
+    CardATQAValue = Atqa;
+}
+
+void MifareUltralightGetSak(uint8_t * Sak)
+{
+    *Sak = CardSAKValue;
+}
+
+void MifareUltralightSetSak(uint8_t Sak)
+{
+    CardSAKValue = Sak;
+}

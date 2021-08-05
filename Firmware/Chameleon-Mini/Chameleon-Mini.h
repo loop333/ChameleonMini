@@ -9,7 +9,6 @@
 #include "System.h"
 #include "Memory.h"
 #include "LED.h"
-#include "Pin.h"
 #include "LEDHook.h"
 #include "Terminal/Terminal.h"
 #include "Codec/Codec.h"
@@ -18,11 +17,10 @@
 #include "Random.h"
 #include "Button.h"
 #include "Log.h"
-#include "LiveLogTick.h"
 #include "AntennaLevel.h"
 #include "Settings.h"
 
-#define CHAMELEON_MINI_VERSION_STRING    BUILD_DATE
+#define CHAMELEON_MINI_VERSION_STRING    __DATE__
 
 #endif //CHAMELEON_MINI_H
 

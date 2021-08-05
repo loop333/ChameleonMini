@@ -80,6 +80,17 @@ void SystemEnterBootloader(void) {
 }
 
 
+bool SystemTick100ms(void) {
+    if (RTC.INTFLAGS & RTC_COMPIF_bm) {
+        while (RTC.STATUS & RTC_SYNCBUSY_bm) ;
+
+        RTC.INTFLAGS = RTC_COMPIF_bm;
+        return true;
+    }
+
+    return false;
+}
+
 void SystemStartUSBClock(void) {
     //SystemSleepDisable();
 #if 0

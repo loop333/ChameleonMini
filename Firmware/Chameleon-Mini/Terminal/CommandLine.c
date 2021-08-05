@@ -62,6 +62,20 @@ const PROGMEM CommandEntryType CommandTable[] = {
         .GetFunc    = CommandGetUid
     },
     {
+        .Command    = COMMAND_ATQA,
+        .ExecFunc   = NO_FUNCTION,
+        .ExecParamFunc = NO_FUNCTION,
+        .SetFunc    = CommandSetAtqa,
+        .GetFunc    = CommandGetAtqa
+    },
+    {
+        .Command    = COMMAND_SAK,
+        .ExecFunc   = NO_FUNCTION,
+        .ExecParamFunc = NO_FUNCTION,
+        .SetFunc    = CommandSetSak,
+        .GetFunc    = CommandGetSak
+    },
+    {
         .Command    = COMMAND_READONLY,
         .ExecFunc   = NO_FUNCTION,
         .ExecParamFunc = NO_FUNCTION,
@@ -154,13 +168,6 @@ const PROGMEM CommandEntryType CommandTable[] = {
         .ExecParamFunc = NO_FUNCTION,
         .SetFunc    = CommandSetLedRed,
         .GetFunc    = CommandGetLedRed
-    },
-    {
-        .Command    = COMMAND_PIN,
-        .ExecFunc   = NO_FUNCTION,
-        .ExecParamFunc = NO_FUNCTION,
-        .SetFunc    = CommandSetPin,
-        .GetFunc    = CommandGetPin
     },
     {
         .Command    = COMMAND_LOGMODE,
@@ -334,12 +341,42 @@ const PROGMEM CommandEntryType CommandTable[] = {
         .GetFunc        = NO_FUNCTION
     },
 #endif
-    #ifdef ENABLE_RUNTESTS_TERMINAL_COMMAND
-    #include "../Tests/ChameleonTerminalInclude.c"
-    #endif
-    #if defined(CONFIG_MF_DESFIRE_SUPPORT) && !defined(DISABLE_DESFIRE_TERMINAL_COMMANDS)
-    #include "../Application/DESFire/DESFireChameleonTerminalInclude.c"
-    #endif
+    {
+        .Command    = COMMAND_SETUIDMODE,
+        .ExecFunc   = NO_FUNCTION,
+        .ExecParamFunc = NO_FUNCTION,
+        .SetFunc    = CommandSetUidMode,
+        .GetFunc    = CommandGetUidMode
+    },
+    {
+        .Command    = COMMAND_SETSAKMODE,
+        .ExecFunc   = NO_FUNCTION,
+        .ExecParamFunc = NO_FUNCTION,
+        .SetFunc    = CommandSetSakMode,
+        .GetFunc    = CommandGetSakMode
+    },
+    {
+        .Command    = COMMAND_SETLEDMODE,
+        .ExecFunc   = NO_FUNCTION,
+        .ExecParamFunc = NO_FUNCTION,
+        .SetFunc    = CommandSetLedMode,
+        .GetFunc    = CommandGetLedMode
+    },
+    {
+        .Command    = COMMAND_DETECTION,
+        .ExecFunc   = NO_FUNCTION,
+        .ExecParamFunc = NO_FUNCTION,
+        .SetFunc    = CommandSetDetection,
+        .GetFunc    = CommandGetDetection,
+    },
+    {
+        .Command    = COMMAND_BAUDRATE,
+        .ExecFunc   = NO_FUNCTION,
+        .ExecParamFunc = NO_FUNCTION,
+//    .SetFunc    = CommandSetBaudrate,
+        .SetFunc    = NO_FUNCTION,
+        .GetFunc    = CommandGetBaudrate,
+    },
     {
         /* This has to be last element */
         .Command    = COMMAND_LIST_END,
@@ -370,7 +407,7 @@ static const CommandStatusType PROGMEM StatusTable[] = {
     STATUS_TABLE_ENTRY(COMMAND_ERR_TIMEOUT_ID, COMMAND_ERR_TIMEOUT),
 };
 
-uint16_t TerminalBufferIdx = 0;
+static uint16_t BufferIdx;
 
 void (*CommandLinePendingTaskTimeout)(void) = NO_FUNCTION;  // gets called on Timeout
 static bool TaskPending = false;
@@ -486,7 +523,7 @@ static void DecodeCommand(void) {
 }
 
 void CommandLineInit(void) {
-    TerminalBufferIdx = 0;
+    BufferIdx = 0;
 }
 
 bool CommandLineProcessByte(uint8_t Byte) {
@@ -497,24 +534,24 @@ bool CommandLineProcessByte(uint8_t Byte) {
         }
 
         /* Prevent buffer overflow and account for '\0' */
-        if (TerminalBufferIdx < TERMINAL_BUFFER_SIZE - 1) {
-            TerminalBuffer[TerminalBufferIdx++] = Byte;
+        if (BufferIdx < TERMINAL_BUFFER_SIZE - 1) {
+            TerminalBuffer[BufferIdx++] = Byte;
         }
     } else if (Byte == '\r') {
         /* Process on \r. Terminate string and decode. */
-        TerminalBuffer[TerminalBufferIdx] = '\0';
-        TerminalBufferIdx = 0;
+        TerminalBuffer[BufferIdx] = '\0';
+        BufferIdx = 0;
 
         if (!TaskPending)
             DecodeCommand();
     } else if (Byte == '\b') {
         /* Backspace. Delete last character in buffer. */
-        if (TerminalBufferIdx > 0) {
-            TerminalBufferIdx--;
+        if (BufferIdx > 0) {
+            BufferIdx--;
         }
     } else if (Byte == 0x1B) {
         /* Drop buffer on escape */
-        TerminalBufferIdx = 0;
+        BufferIdx = 0;
     } else {
         /* Ignore other chars */
     }

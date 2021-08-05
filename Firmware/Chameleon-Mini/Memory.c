@@ -1,8 +1,12 @@
 /*
- * Flash.c
+ * Memory.c
  *
  *  Created on: 20.03.2013
  *      Author: skuser
+ *
+ *  ChangeLog
+ *    2019-09-22    Willok    Modify only load and save card area, add area tracking, do not save if there is no change
+ *
  */
 
 #include "Memory.h"
@@ -35,6 +39,12 @@ void FlashLoadFlashWord(uint16_t Address, uint16_t Data);
 void FlashEraseWriteApplicationPage(uint32_t Address);
 void FlashEraseFlashBuffer(void);
 void FlashWaitForSPM(void);
+
+uint8_t       bUidMode = 0;
+uint8_t EEMEM bUidMode_EEP = 0;
+
+uint8_t       bSramWriteFlag = 0;
+uint8_t EEMEM bSramWriteFlag_EEP = 0;
 
 static uint8_t ScrapBuffer[] = {0};
 
@@ -123,6 +133,9 @@ INLINE void SPIWriteBlock(const void *Buffer, uint16_t ByteCount) {
 #endif
 
 INLINE void FRAMRead(void *Buffer, uint16_t Address, uint16_t ByteCount) {
+    if (0 == ByteCount)
+        return;
+
     FRAM_PORT.OUTCLR = FRAM_CS;
 
     SPITransferByte(0x03); /* Read command */
@@ -135,6 +148,14 @@ INLINE void FRAMRead(void *Buffer, uint16_t Address, uint16_t ByteCount) {
 }
 
 INLINE void FRAMWrite(const void *Buffer, uint16_t Address, uint16_t ByteCount) {
+    if (0 == ByteCount)
+        return;
+
+    if (bSramWriteFlag == 0x00 && Address < FRAM_LOG_ADDR_ADDR) {
+        bSramWriteFlag++;
+        WriteEEPBlock((uint16_t) &bSramWriteFlag_EEP, &bSramWriteFlag, 1);
+    }
+
     FRAM_PORT.OUTCLR = FRAM_CS;
     SPITransferByte(0x06); /* Write Enable */
     FRAM_PORT.OUTSET = FRAM_CS;
@@ -151,6 +172,15 @@ INLINE void FRAMWrite(const void *Buffer, uint16_t Address, uint16_t ByteCount) 
     SPIWriteBlock(Buffer, ByteCount);
 
     FRAM_PORT.OUTSET = FRAM_CS;
+#ifdef CONFIG_ISO14443A_READER_SUPPORT
+    if (0 == Address && GlobalSettings.ActiveSettingPtr->Configuration != CONFIG_ISO14443A_READER) {
+        ConfigurationSetById(GlobalSettings.ActiveSettingPtr->Configuration);
+    }
+#else
+    if (0 == Address) {
+        ConfigurationSetById(GlobalSettings.ActiveSettingPtr->Configuration);
+    }
+#endif
 }
 
 INLINE void FlashRead(void *Buffer, uint32_t Address, uint16_t ByteCount) {
@@ -179,7 +209,7 @@ INLINE void FlashWrite(const void *Buffer, uint32_t Address, uint16_t ByteCount)
     /* We assume that FlashWrite is always called for write actions that are
      * aligned to APP_SECTION_PAGE_SIZE and a multiple of APP_SECTION_PAGE_SIZE.
      * Thus only full pages are written into the flash. */
-    uint16_t PageCount = ByteCount / APP_SECTION_PAGE_SIZE;
+    uint16_t PageCount = (ByteCount + APP_SECTION_PAGE_SIZE - 1) / APP_SECTION_PAGE_SIZE;
     uint32_t PhysicalAddress = Address + FLASH_DATA_ADDR;
 
     if ((PhysicalAddress >= FLASH_DATA_START) && (PhysicalAddress <= FLASH_DATA_END)) {
@@ -215,7 +245,7 @@ INLINE void FlashWrite(const void *Buffer, uint32_t Address, uint16_t ByteCount)
 }
 
 INLINE void FlashErase(uint32_t Address, uint16_t ByteCount) {
-    uint16_t PageCount = ByteCount / APP_SECTION_PAGE_SIZE;
+    uint16_t PageCount = (ByteCount + APP_SECTION_PAGE_SIZE - 1) / APP_SECTION_PAGE_SIZE;
     uint32_t PhysicalAddress = Address + FLASH_DATA_ADDR;
 
     if ((PhysicalAddress >= FLASH_DATA_START) && (PhysicalAddress <= FLASH_DATA_END)) {
@@ -232,6 +262,9 @@ INLINE void FlashErase(uint32_t Address, uint16_t ByteCount) {
 }
 
 INLINE void FlashToFRAM(uint32_t Address, uint16_t ByteCount) {
+    if (0 == ByteCount)
+        return;
+
     /* We assume that ByteCount is a multiple of 2 */
     uint32_t PhysicalAddress = Address + FLASH_DATA_ADDR;
 
@@ -269,10 +302,18 @@ INLINE void FlashToFRAM(uint32_t Address, uint16_t ByteCount) {
 }
 
 INLINE void FRAMToFlash(uint32_t Address, uint16_t ByteCount) {
+    if (0 == ByteCount)
+        return;
+
+    if (0 == bSramWriteFlag)
+        return;
+    bSramWriteFlag = 0;
+    WriteEEPBlock((uint16_t) &bSramWriteFlag_EEP, &bSramWriteFlag, 1);
+
     /* We assume that FlashWrite is always called for write actions that are
      * aligned to APP_SECTION_PAGE_SIZE and a multiple of APP_SECTION_PAGE_SIZE.
      * Thus only full pages are written into the flash. */
-    uint16_t PageCount = ByteCount / APP_SECTION_PAGE_SIZE;
+    uint16_t PageCount = (ByteCount + APP_SECTION_PAGE_SIZE - 1) / APP_SECTION_PAGE_SIZE;
     uint32_t PhysicalAddress = Address + FLASH_DATA_ADDR;
 
     if ((PhysicalAddress >= FLASH_DATA_START) && (PhysicalAddress <= FLASH_DATA_END)) {
@@ -319,6 +360,9 @@ INLINE void FRAMToFlash(uint32_t Address, uint16_t ByteCount) {
 }
 
 void MemoryInit(void) {
+    ReadEEPBlock((uint16_t) &bUidMode_EEP, &bUidMode, 1);
+    ReadEEPBlock((uint16_t) &bSramWriteFlag_EEP, &bSramWriteFlag, 1);
+
     /* Configure FRAM_USART for SPI master mode 0 with maximum clock frequency */
     FRAM_PORT.OUTSET = FRAM_CS;
 
@@ -362,14 +406,6 @@ void MemoryReadBlock(void *Buffer, uint16_t Address, uint16_t ByteCount) {
     FRAMRead(Buffer, Address, ByteCount);
 }
 
-void MemoryReadBlockInSetting(void* Buffer, uint16_t Address, uint16_t ByteCount)
-{
-    if (ByteCount == 0 || Address >= MEMORY_SIZE_PER_SETTING)
-        return;
-    uint16_t ActualFRAMAddress = Address + GlobalSettings.ActiveSettingIdx * MEMORY_SIZE_PER_SETTING;
-    FRAMRead(Buffer, ActualFRAMAddress, ByteCount);
-}
-
 void MemoryWriteBlock(const void *Buffer, uint16_t Address, uint16_t ByteCount) {
     if (ByteCount == 0)
         return;
@@ -378,31 +414,30 @@ void MemoryWriteBlock(const void *Buffer, uint16_t Address, uint16_t ByteCount) 
     LEDHook(LED_MEMORY_CHANGED, LED_ON);
 }
 
-void MemoryWriteBlockInSetting(const void* Buffer, uint16_t Address, uint16_t ByteCount)
-{
-    if (ByteCount == 0 || Address >= MEMORY_SIZE_PER_SETTING)
-        return;
-    uint16_t ActualFRAMAddress = Address + GlobalSettings.ActiveSettingIdx * MEMORY_SIZE_PER_SETTING;
-    FRAMWrite(Buffer, ActualFRAMAddress, ByteCount);
-    LEDHook(LED_MEMORY_CHANGED, LED_ON);
-}
-
 void MemoryClear(void) {
-    FlashErase((uint32_t) GlobalSettings.ActiveSettingIdx * MEMORY_SIZE_PER_SETTING, MEMORY_SIZE_PER_SETTING);
+    if (GlobalSettings.ActiveSettingIdx < SETTINGS_COUNT)
+        FlashErase((uint32_t) GlobalSettings.ActiveSettingIdx * MEMORY_SIZE_PER_SETTING, MEMORY_SIZE_PER_SETTING);
 
     MemoryRecall();
 }
 
 void MemoryRecall(void) {
     /* Recall memory from permanent flash */
-    FlashToFRAM((uint32_t) GlobalSettings.ActiveSettingIdx * MEMORY_SIZE_PER_SETTING, MEMORY_SIZE_PER_SETTING);
+    if (GlobalSettings.ActiveSettingIdx < SETTINGS_COUNT)
+        FlashToFRAM((uint32_t) GlobalSettings.ActiveSettingIdx * MEMORY_SIZE_PER_SETTING, ActiveConfiguration.MemorySize);
+
+#ifdef CONFIG_ISO14443A_READER_SUPPORT
+    if (GlobalSettings.ActiveSettingPtr->Configuration != CONFIG_ISO14443A_READER)
+        ActiveConfiguration.ApplicationInitFunc();
+#endif
 
     SystemTickClearFlag();
 }
 
 void MemoryStore(void) {
     /* Store current memory into permanent flash */
-    FRAMToFlash((uint32_t) GlobalSettings.ActiveSettingIdx * MEMORY_SIZE_PER_SETTING, MEMORY_SIZE_PER_SETTING);
+    if (GlobalSettings.ActiveSettingIdx < SETTINGS_COUNT)
+        FRAMToFlash((uint32_t) GlobalSettings.ActiveSettingIdx * MEMORY_SIZE_PER_SETTING, ActiveConfiguration.MemorySize);
 
     LEDHook(LED_MEMORY_CHANGED, LED_OFF);
     LEDHook(LED_MEMORY_STORED, LED_PULSE);
@@ -411,7 +446,7 @@ void MemoryStore(void) {
 }
 
 bool MemoryUploadBlock(void *Buffer, uint32_t BlockAddress, uint16_t ByteCount) {
-    if (BlockAddress >= MEMORY_SIZE_PER_SETTING) {
+    if ((BlockAddress >= MEMORY_SIZE_PER_SETTING) || (BlockAddress >= ActiveConfiguration.MemorySize)) {
         /* Prevent writing out of bounds by silently ignoring it */
         return true;
     } else {
@@ -427,7 +462,7 @@ bool MemoryUploadBlock(void *Buffer, uint32_t BlockAddress, uint16_t ByteCount) 
 }
 
 bool MemoryDownloadBlock(void *Buffer, uint32_t BlockAddress, uint16_t ByteCount) {
-    if (BlockAddress >= MEMORY_SIZE_PER_SETTING) {
+    if ((BlockAddress >= MEMORY_SIZE_PER_SETTING) || (BlockAddress >= ActiveConfiguration.MemorySize)) {
         /* There are bytes out of bounds to be read. Notify that we are done. */
         return false;
     } else {

@@ -11,10 +11,12 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#include "Map.h"
-
 #define CONFIGURATION_NAME_LENGTH_MAX   32
 #define CONFIGURATION_UID_SIZE_MAX      16
+/* ATQA & SAK */
+#define CONFIGURATION_DUMMY_ATQA        0x0000
+#define CONFIGURATION_DUMMY_SAK         0x00
+
 
 typedef uint8_t ConfigurationUidType[CONFIGURATION_UID_SIZE_MAX];
 
@@ -43,14 +45,17 @@ typedef enum  {
 #ifdef CONFIG_MF_CLASSIC_4K_7B_SUPPORT
     CONFIG_MF_CLASSIC_4K_7B,
 #endif
+#ifdef CONFIG_MF_DETECTION_SUPPORT
+    CONFIG_MF_DETECTION,
+#endif
+#ifdef CONFIG_MF_DETECTION_4K_SUPPORT
+    CONFIG_MF_DETECTION_4K,
+#endif
 #ifdef CONFIG_ISO14443A_SNIFF_SUPPORT
     CONFIG_ISO14443A_SNIFF,
 #endif
 #ifdef CONFIG_ISO14443A_READER_SUPPORT
     CONFIG_ISO14443A_READER,
-#endif
-#ifdef CONFIG_NTAG215_SUPPORT
-    CONFIG_NTAG215,
 #endif
 #ifdef CONFIG_VICINITY_SUPPORT
     CONFIG_VICINITY,
@@ -64,14 +69,8 @@ typedef enum  {
 #ifdef CONFIG_TITAGITSTANDARD_SUPPORT
     CONFIG_TITAGITSTANDARD,
 #endif
-#ifdef CONFIG_TITAGITPLUS_SUPPORT
-    CONFIG_TITAGITPLUS,
-#endif
 #ifdef CONFIG_EM4233_SUPPORT
     CONFIG_EM4233,
-#endif
-#ifdef CONFIG_MF_DESFIRE_SUPPORT
-    CONFIG_MF_DESFIRE,
 #endif
     /* This HAS to be the last element */
     CONFIG_COUNT
@@ -141,6 +140,26 @@ typedef struct {
      */
     void (*ApplicationSetUidFunc)(ConfigurationUidType Uid);
     /**
+     * Writes the SAK for the current configuration to the given buffer.
+     * \param Sak	The target buffer.
+     */
+    void (*ApplicationGetSakFunc) (uint8_t * Sak);
+    /**
+     * Writes a given SAK to the current configuration.
+     * \param Sak	The source buffer.
+     */
+    void (*ApplicationSetSakFunc) (uint8_t Sak);
+    /**
+     * Writes the ATQA for the current configuration to the given buffer.
+     * \param Atqa	The target buffer.
+     */
+    void (*ApplicationGetAtqaFunc) (uint16_t * Atqa);
+    /**
+     * Writes a given ATQA to the current configuration.
+     * \param Atqa	The source buffer.
+     */
+    void (*ApplicationSetAtqaFunc) (uint16_t Atqa);
+    /**
      * @}
      */
 
@@ -172,7 +191,6 @@ extern ConfigurationType ActiveConfiguration;
 
 void ConfigurationInit(void);
 void ConfigurationSetById(ConfigurationEnum Configuration);
-MapIdType ConfigurationCheckByName(const char *Configuration);
 void ConfigurationGetByName(char *Configuration, uint16_t BufferSize);
 bool ConfigurationSetByName(const char *Configuration);
 void ConfigurationGetList(char *ConfigurationList, uint16_t BufferSize);

@@ -1,5 +1,3 @@
-#if defined (CONFIG_ISO15693_SNIFF_SUPPORT) || defined (CONFIG_SL2S2002_SUPPORT) || defined (CONFIG_TITAGITSTANDARD_SUPPORT) || defined (CONFIG_TITAGITPLUS_SUPPORT)
-
 #include "ISO15693-A.h"
 #include "../Common.h"
 #include <util/crc16.h>
@@ -160,5 +158,3 @@ bool ISO15693AntiColl(uint8_t *FrameBuf, uint16_t FrameBytes, CurrentFrame *Fram
 
     return true;
 }
-
-#endif /* CONFIG_ISO15693_SNIFF_SUPPORT || CONFIG_SL2S2002_SUPPORT || CONFIG_TITAGITSTANDARD_SUPPORT || CONFIG_TITAGITPLUS_SUPPORT */

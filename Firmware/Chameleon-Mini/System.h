@@ -19,8 +19,9 @@
 #define SYSTEM_MILLISECONDS_TO_RTC_CYCLES(x) \
     ( (uint16_t) ( (double) F_RTC * x / 1E3 + 0.5) )
 
+//    Tick about 120ms
 #define SYSTEM_TICK_WIDTH	7 /* Bits */
-#define SYSTEM_TICK_PERIOD  (1<<7)
+#define SYSTEM_TICK_PERIOD    106        /* (1<<7) */
 #define SYSTEM_TICK_MS		(SYSTEM_TICK_PERIOD)
 #define SYSTEM_TICK_FREQ	(1000 / SYSTEM_TICK_PERIOD)
 
@@ -36,19 +37,7 @@ void SystemEnterBootloader(void);
 void SystemStartUSBClock(void);
 void SystemStopUSBClock(void);
 void SystemInterruptInit(void);
-INLINE bool SystemTick100ms(void);
-
-INLINE bool SystemTick100ms(void) {
-    if (RTC.INTFLAGS & RTC_COMPIF_bm) {
-        while (RTC.STATUS & RTC_SYNCBUSY_bm)
-            ;
-
-        RTC.INTFLAGS = RTC_COMPIF_bm;
-        return true;
-    }
-
-    return false;
-}
+bool SystemTick100ms(void);
 
 INLINE void SystemTickClearFlag(void) {
     while (RTC.STATUS & RTC_SYNCBUSY_bm)

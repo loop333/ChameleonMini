@@ -1,11 +1,12 @@
 
 #include "Terminal.h"
+#include "../Uart.h"
 #include "../System.h"
 #include "../LEDHook.h"
 
 #include "../LUFADescriptors.h"
 
-#define INIT_DELAY		(2000 / SYSTEM_TICK_MS)
+#define INIT_DELAY		(1000 / SYSTEM_TICK_MS)
 
 
 USB_ClassInfo_CDC_Device_t TerminalHandle = {
@@ -27,44 +28,45 @@ USB_ClassInfo_CDC_Device_t TerminalHandle = {
     }
 };
 
-uint8_t TerminalBuffer[TERMINAL_BUFFER_SIZE] = { 0x00 };
+uint8_t bUSBTerminal = 0;
+uint8_t TerminalBuffer[TERMINAL_BUFFER_SIZE];
 TerminalStateEnum TerminalState = TERMINAL_UNINITIALIZED;
 static uint8_t TerminalInitDelay = INIT_DELAY;
 
-void TerminalSendString(const char *s) {
-    CDC_Device_SendString(&TerminalHandle, s);
-}
-
-void TerminalSendStringP(const char *s) {
-    char c;
-
-    while ((c = pgm_read_byte(s++)) != '\0') {
-        TerminalSendChar(c);
+void TerminalSendByte(uint8_t Byte) {
+    if (bUSBTerminal) {
+        CDC_Device_SendByte(&TerminalHandle, Byte);
+    } else {
+        uart_fifo_put(&Byte, 1);
     }
 }
 
-/*
-void TerminalSendHex(void* Buffer, uint16_t ByteCount)
-{
-    char* pTerminalBuffer = (char*) TerminalBuffer;
-
-    BufferToHexString(pTerminalBuffer, sizeof(TerminalBuffer), Buffer, ByteCount);
-
-    TerminalSendString(pTerminalBuffer);
+void TerminalSendString(const char *s) {
+    TerminalSendBlock(s, strlen(s));
 }
 
-*/
+void TerminalSendStringP(const char *s) {
+    char Byte;
 
+    while ((Byte = pgm_read_byte(s++)) != '\0') {
+        TerminalSendByte(Byte);
+    }
+}
 
 void TerminalSendBlock(const void *Buffer, uint16_t ByteCount) {
-    CDC_Device_SendData(&TerminalHandle, Buffer, ByteCount);
+    if (bUSBTerminal) {
+        CDC_Device_SendData(&TerminalHandle, Buffer, ByteCount);
+    } else {
+        uart_fifo_put((uint8_t *)Buffer, ByteCount);
+    }
 }
 
 
-static void ProcessByte(void) {
+void ProcessByte(void) {
     int16_t Byte = CDC_Device_ReceiveByte(&TerminalHandle);
 
     if (Byte >= 0) {
+        bUSBTerminal = 1;
         /* Byte received */
         LEDHook(LED_TERMINAL_RXTX, LED_PULSE);
 
@@ -76,7 +78,7 @@ static void ProcessByte(void) {
     }
 }
 
-static void SenseVBus(void) {
+static void SenseVBusTick(void) {
     switch (TerminalState) {
         case TERMINAL_UNINITIALIZED:
             if (TERMINAL_VBUS_PORT.IN & TERMINAL_VBUS_MASK) {
@@ -99,6 +101,7 @@ static void SenseVBus(void) {
                 /* Initialized and VBUS sense low */
                 TerminalInitDelay = INIT_DELAY;
                 TerminalState = TERMINAL_UNITIALIZING;
+                bUSBTerminal = 0;
             }
             break;
 
@@ -129,7 +132,7 @@ void TerminalTask(void) {
 }
 
 void TerminalTick(void) {
-    SenseVBus();
+    SenseVBusTick();
 
     if (TerminalState == TERMINAL_INITIALIZED) {
         XModemTick();

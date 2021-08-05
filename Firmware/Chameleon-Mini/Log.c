@@ -1,29 +1,22 @@
 #include "Log.h"
-#include "LiveLogTick.h"
 #include "Settings.h"
 #include "Terminal/Terminal.h"
 #include "System.h"
 #include "Map.h"
 #include "LEDHook.h"
 
-uint8_t LogMem[LOG_SIZE];
-uint8_t *LogMemPtr;
-uint16_t LogMemLeft;
-
+static uint8_t LogMem[LOG_SIZE];
+static uint8_t *LogMemPtr;
+static uint16_t LogMemLeft;
 static uint16_t LogFRAMAddr = FRAM_LOG_START_ADDR;
 static uint8_t EEMEM LogFRAMAddrValid = false;
 static bool EnableLogSRAMtoFRAM = false;
-LogFuncType CurrentLogFunc;
-
-LogBlockListNode *LogBlockListBegin = NULL;
-LogBlockListNode *LogBlockListEnd = NULL;
-uint8_t LogBlockListElementCount = 0;
-uint8_t LiveLogModePostTickCount = 0;
+LogFuncType CurrentLogFunc = NULL;
 
 static const MapEntryType PROGMEM LogModeMap[] = {
     { .Id = LOG_MODE_OFF, 		.Text = "OFF" 		},
     { .Id = LOG_MODE_MEMORY, 	.Text = "MEMORY" 	},
-    { .Id = LOG_MODE_LIVE, 	    .Text = "LIVE" 	    }
+    { .Id = LOG_MODE_LIVE, 	.Text = "LIVE" 	}
 };
 
 static void LogFuncOff(LogEntryEnum Entry, const void *Data, uint8_t Length) {
@@ -57,28 +50,28 @@ static void LogFuncMemory(LogEntryEnum Entry, const void *Data, uint8_t Length) 
 
 static void LogFuncLive(LogEntryEnum Entry, const void *Data, uint8_t Length) {
     uint16_t SysTick = SystemGetSysTick();
-    //TerminalSendByte((uint8_t) Entry);
-    //TerminalSendByte((uint8_t) Length);
-    //TerminalSendByte((uint8_t)(SysTick >> 8));
-    //TerminalSendByte((uint8_t)(SysTick >> 0));
-    //TerminalSendBlock(Data, Length);
-    AtomicAppendLogBlock(Entry, SysTick, Data, Length);
+
+    TerminalSendByte((uint8_t) Entry);
+    TerminalSendByte((uint8_t) Length);
+    TerminalSendByte((uint8_t)(SysTick >> 8));
+    TerminalSendByte((uint8_t)(SysTick >> 0));
+    TerminalSendBlock(Data, Length);
 }
 
 void LogInit(void) {
     LogSetModeById(GlobalSettings.ActiveSettingPtr->LogMode);
     LogMemPtr = LogMem;
     LogMemLeft = sizeof(LogMem);
+    memset(LogMemPtr, LOG_EMPTY, LOG_SIZE);
 
     uint8_t result;
     ReadEEPBlock((uint16_t) &LogFRAMAddrValid, &result, 1);
-    memset(LogMemPtr, LOG_EMPTY, LOG_SIZE);
-    if (result) {
+    if (result == 0x5A) {
         MemoryReadBlock(&LogFRAMAddr, FRAM_LOG_ADDR_ADDR, 2);
     } else {
         LogFRAMAddr = FRAM_LOG_START_ADDR;
         MemoryWriteBlock(&LogFRAMAddr, FRAM_LOG_ADDR_ADDR, 2);
-        result = true;
+        result = 0x5A;
         WriteEEPBlock((uint16_t) &LogFRAMAddrValid, &result, 1);
     }
 
@@ -86,9 +79,6 @@ void LogInit(void) {
 }
 
 void LogTick(void) {
-    if (GlobalSettings.ActiveSettingPtr->LogMode == LOG_MODE_LIVE &&
-            (++LiveLogModePostTickCount % LIVE_LOGGER_POST_TICKS) == 0)
-        AtomicLiveLogTick();
     if (EnableLogSRAMtoFRAM)
         LogSRAMToFRAM();
 }
@@ -136,7 +126,8 @@ bool LogMemLoadBlock(void *Buffer, uint32_t BlockAddress, uint16_t ByteCount) {
     }
 }
 
-INLINE void LogSRAMClear(void) {
+//INLINE void LogSRAMClear(void)
+void LogSRAMClear(void) {
     uint16_t i, until = LOG_SIZE - LogMemLeft;
 
     for (i = 0; i < until; i++) {
@@ -160,13 +151,15 @@ uint16_t LogMemFree(void) {
 
 
 void LogSetModeById(LogModeEnum Mode) {
-#ifdef LOG_SETTING_GLOBAL
-    /* Write Log settings globally */
-    for (uint8_t i=0; i<SETTINGS_COUNT; i++) {
-         GlobalSettings.Settings[i].LogMode = Mode;
-    }   
-#endif
+#ifndef LOG_SETTING_GLOBAL
     GlobalSettings.ActiveSettingPtr->LogMode = Mode;
+#else
+    /* Write Log settings globally */
+    for (uint8_t i = 0; i < SETTINGS_COUNT; i++) {
+        GlobalSettings.Settings[i].LogMode = Mode;
+    }
+#endif
+
     switch (Mode) {
         case LOG_MODE_OFF:
             EnableLogSRAMtoFRAM = false;

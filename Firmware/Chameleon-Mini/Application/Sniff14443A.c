@@ -4,13 +4,10 @@
 // Currently only support Autocalibrate
 //
 
-#ifdef CONFIG_ISO14443A_SNIFF_SUPPORT
-
 #include <stdbool.h>
 #include <LED.h>
 #include "Sniff14443A.h"
 #include "Codec/SniffISO14443-2A.h"
-
 extern bool checkParityBits(uint8_t *Buffer, uint16_t BitCount);
 
 Sniff14443Command Sniff14443CurrentCommand = Sniff14443_Do_Nothing;
@@ -26,8 +23,7 @@ static enum {
 } SniffState = STATE_IDLE;
 
 static uint16_t tmp_th = CODEC_THRESHOLD_CALIBRATE_MIN;
-static uint8_t Thresholds[(CODEC_THRESHOLD_CALIBRATE_MAX - CODEC_THRESHOLD_CALIBRATE_MIN) /
-                          CODEC_THRESHOLD_CALIBRATE_STEPS] = {0};
+static uint8_t Thresholds[(CODEC_THRESHOLD_CALIBRATE_MAX - CODEC_THRESHOLD_CALIBRATE_MIN) / CODEC_THRESHOLD_CALIBRATE_STEPS] = {0};
 
 void Sniff14443AAppInit(void) {
     SniffState = STATE_REQA;
@@ -175,5 +171,3 @@ uint16_t Sniff14443AAppProcess(uint8_t *Buffer, uint16_t BitCount) {
     }
     return 0;
 }
-
-#endif /* CONFIG_ISO14443A_SNIFF_SUPPORT */

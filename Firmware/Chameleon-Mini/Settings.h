@@ -19,6 +19,9 @@
 #define SETTINGS_FIRST		1
 #define SETTINGS_LAST		(SETTINGS_FIRST + SETTINGS_COUNT - 1)
 
+#define SETTING_TO_INDEX(S) (S - SETTINGS_FIRST)
+#define INDEX_TO_SETTING(I) (I + SETTINGS_FIRST)
+
 /** Defines one setting.
  *
  * \note Some properties may change globally if this is defined in the Makefile.
@@ -31,12 +34,13 @@ typedef struct {
     LEDHookEnum LEDGreenFunction; /// Green LED function for this setting.
     uint16_t PendingTaskTimeout; /// Timeout for timeout commands for this setting, in multiples of 100 ms.
     uint16_t ReaderThreshold; /// Reader threshold
+    uint8_t bSakMode; ///    MifareCard SAK_ATQA Setting
 } SettingsEntryType;
 
 typedef struct {
     uint8_t ActiveSettingIdx;
     SettingsEntryType *ActiveSettingPtr;
-    SettingsEntryType Settings[SETTINGS_COUNT];
+    SettingsEntryType Settings[SETTINGS_COUNT + 1];
 } SettingsType;
 
 extern SettingsType GlobalSettings, StoredSettings;
@@ -56,6 +60,7 @@ INLINE void SettingUpdate(const void *addr, uint16_t size) {
         default:
             eeprom_update_block((uint8_t *)addr, (uint8_t *)EEAddr, size);
     }
+
 #endif
 }
 
@@ -64,7 +69,7 @@ INLINE void SettingUpdate(const void *addr, uint16_t size) {
 void SettingsLoad(void);
 void SettingsSave(void);
 
-void SettingsCycle(void);
+void SettingsCycle(uint8_t bAdd);
 bool SettingsSetActiveById(uint8_t Setting);
 uint8_t SettingsGetActiveById(void);
 void SettingsGetActiveByName(char *SettingOut, uint16_t BufferSize);

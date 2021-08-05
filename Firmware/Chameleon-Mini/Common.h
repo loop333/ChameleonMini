@@ -11,7 +11,7 @@
 #include <stdio.h>
 #include <stdbool.h>
 #include <util/parity.h>
-#include <util/delay.h>
+//#include <util/delay.h>
 #include <avr/pgmspace.h>
 #include <avr/io.h>
 
@@ -22,10 +22,6 @@
 
 #define INLINE \
     static inline __attribute__((always_inline))
-
-#ifndef STRINGIFY
-#define STRINGIFY(x) #x
-#endif
 
 #define ARRAY_COUNT(x) \
     (sizeof(x) / sizeof(x[0]))
