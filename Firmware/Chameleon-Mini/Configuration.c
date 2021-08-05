@@ -464,9 +464,6 @@ void ConfigurationSetById(ConfigurationEnum Configuration) {
 
     CodecInit();
     ApplicationInit();
-
-    /* Notify LED. blink according to current setting */
-    LEDHook(LED_SETTING_CHANGE, LED_BLINK + Configuration);
 }
 
 void ConfigurationGetByName(char *Configuration, uint16_t BufferSize) {
@@ -474,10 +471,10 @@ void ConfigurationGetByName(char *Configuration, uint16_t BufferSize) {
 }
 
 MapIdType ConfigurationCheckByName(const char *Configuration) {
-    MapIdType Id; 
+    MapIdType Id;
     if (MapTextToId(ConfigurationMap, ARRAY_COUNT(ConfigurationMap), Configuration, &Id)) {
-        return Id; 
-    }   
+        return Id;
+    }
     return 0xff;
 }
 
@@ -496,5 +493,3 @@ bool ConfigurationSetByName(const char *Configuration) {
 void ConfigurationGetList(char *List, uint16_t BufferSize) {
     MapToString(ConfigurationMap, ARRAY_COUNT(ConfigurationMap), List, BufferSize);
 }
-
-
